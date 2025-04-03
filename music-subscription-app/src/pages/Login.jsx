@@ -49,10 +49,10 @@ const Login = () => {
 	}
 
 	return (
-		<div className="flex justify-center items-center min-h-screen bg-gray-100">
-			<div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-				<h1 className="text-2xl font-bold text-center text-gray-800 mb-2">Music Subscription App</h1>
-				<h2 className="text-xl text-center text-gray-600 mb-6">Login</h2>
+		<div className="flex justify-center items-center min-h-screen bg-black">
+			<div className="bg-[#121212] p-8 rounded-lg shadow-md w-full max-w-md">
+				<h1 className="text-2xl font-bold text-center text-[#1ed760] mb-2">Music Subscription App</h1>
+				<h2 className="text-xl font-bold text-center text-gray-300 mb-6">Login</h2>
 
 				<form onSubmit={handleSubmit} className="space-y-6">
 					{error && (
@@ -62,7 +62,7 @@ const Login = () => {
 					)}
 
 					<div className="space-y-2">
-						<label htmlFor="email" className="block text-sm font-medium text-gray-700">
+						<label htmlFor="email" className="block text-sm font-medium text-gray-400">
 							Email
 						</label>
 						<input
@@ -77,7 +77,7 @@ const Login = () => {
 					</div>
 
 					<div className="space-y-2">
-						<label htmlFor="password" className="block text-sm font-medium text-gray-700">
+						<label htmlFor="password" className="block text-sm font-medium text-gray-400">
 							Password
 						</label>
 						<input
@@ -93,16 +93,16 @@ const Login = () => {
 
 					<button
 						type="submit"
-						className={`w-full py-2 px-4 rounded-md text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
-              ${loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+						className={`w-full py-2 px-4 rounded-md text-white font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
+              						${loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-[#1ed760] hover:bg-green-700'}`}
 						disabled={loading}
 					>
 						{loading ? 'Logging in...' : 'Login'}
 					</button>
 
-					<div className="text-center text-gray-600">
+					<div className="text-center text-gray-400">
 						Don't have an account?{' '}
-						<Link to="/register" className="text-indigo-600 font-medium hover:text-indigo-500">
+						<Link to="/register" className="text-[#1ed760] font-medium hover:text-green-700">
 							Register here
 						</Link>
 					</div>
