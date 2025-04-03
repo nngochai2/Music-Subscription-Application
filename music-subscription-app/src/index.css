@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@theme {
+	/* Customized colors */
+	--color-spotify-light-black: #121212;
+	--color-spotify-green: #1ed760;
+	--color-spotify-gray: #9fafbc;
+
+	/* Customize font */
+	--font-spotify: 'Montserrat', 'sans-serif'
+}
