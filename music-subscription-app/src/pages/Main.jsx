@@ -121,12 +121,29 @@ const Main = () => {
 
 	// Handle removing a subscription
 	const handleRemoveSubscription = async (music_id) => {
+		if (!user) return;
 
+		try {
+			const response = await musicService.removeSubscription(user.email, music_id);
+
+			if (response.success) {
+				// Update local state to show the removal
+				setSubscriptions(subscriptions.filter(sub => sub.music_id !== music_id));
+			} else {
+				console.error('Remove subscription failed: ', response.message);
+			}
+		} catch (error) {
+			console.error('Error removing subscription: ', error);
+		}
 	}
 
 	// Handle logout
 	const handleLogout = () => {
-
+		// Clear user data from localStorage
+		localStorage.removeItem('user');
+		
+		// Redirect to login page
+		navigate('/login');
 	}
 
 	// If user is not loaded yet, show loading
