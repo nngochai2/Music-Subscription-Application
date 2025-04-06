@@ -22,16 +22,16 @@ const MusicCard = ({ music, actionType, onAction }) => {
 			</div>
 
 			<div className="p-4 flex-grow">
-				<h3 className="text-lg font-semibold text-gray-800 truncate" title={music.title}>
+				<h3 className="text-lg font-bold text-white truncate" title={music.title}>
 					{music.title}
 				</h3>
-				<p className="text-sm text-gray-600 truncate" title={music.artist}>
+				<p className="text-sm text-spotify-gray truncate" title={music.artist}>
 					{music.artist}
 				</p>
-				<p className="text-sm text-gray-600 truncate" title={music.album}>
+				<p className="text-sm text-spotify-gray truncate" title={music.album}>
 					{music.album}
 				</p>
-				<p className="text-sm text-gray-600 mb-3">
+				<p className="text-sm text-spotify-gray mb-3">
 					{music.year}
 				</p>
 
