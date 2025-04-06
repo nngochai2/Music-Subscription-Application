@@ -36,9 +36,9 @@ const MOCK_SUBSCRIPTIONS = [
 		artist: "Led Zeppelin",
 		year: 1971,
 		album: "Led Zeppelin IV",
-		image_url: "https://m.media-amazon.com/images/I/71AfpAs4TXL._SL1500_.jpg",
+		image_url: "https://i1.sndcdn.com/artworks-000094079983-w2pr1t-t500x500.jpg",
 		music_id: "Stairway to Heaven#Led Zeppelin IV",
-		s3_image_url: "https://m.media-amazon.com/images/I/71AfpAs4TXL._SL1500_.jpg"
+		s3_image_url: "https://i1.sndcdn.com/artworks-000094079983-w2pr1t-t500x500.jpg"
 	}
 ];
 
