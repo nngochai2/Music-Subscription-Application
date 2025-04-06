@@ -139,152 +139,207 @@ const Main = () => {
 	}
  
 	return (
-		<div className="min-h-screen bg-black">
-			<header className="bg-black text-white shadow-md">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-					<h1 className="text-2xl font-bold">Music Subscription App</h1>
-					<div className="flex items-center space-x-4">
-						<span className="font-medium">Welcome, {user.user_name}</span>
-						<button
-							onClick={handleLogout}
-							className="px-3 py-1 border border-white rounded-md hover:bg-white hover:text-indigo-600 transition-colors"
-						>
-							Logout
+		<div className="min-h-screen bg-black text-white font-spotify">
+			{/* Top Navigation Bar */}
+			<div className="flex items-center justify-between p-4 bg-[#121212] sticky top-0 z-10 px-20">
+				{/* Left: Logo and User */}
+				<div className="flex items-center space-x-4">
+					<div className="w-10 h-10 flex items-center justify-center bg-green-500 rounded-full">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+							<path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+						</svg>
+					</div>
+					<span className="font-medium text-lg">Music Subscription</span>
+				</div>
+
+				{/* Center: Search bar */}
+				<div className="hidden md:block max-w-lg w-full">
+					<div className="relative">
+						<input
+							type="text"
+							placeholder="Search for songs, artists, or albums..."
+							className="w-full rounded-full py-2 px-4 bg-[#242424] focus:outline-none focus:ring-2 focus:ring-white"
+						/>
+						<button className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+							<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							</svg>
 						</button>
 					</div>
 				</div>
-			</header>
 
-			<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				<section className="bg-spotify-light-black rounded-lg shadow-md p-6 mb-8">
-					<h2 className="text-xl font-bold text-white mb-6">Search Music</h2>
-					<form onSubmit={handleQuerySubmit} className="space-y-6">
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-							<div className="space-y-2">
-								<label htmlFor="title" className="block text-sm font-semibold text-spotify-gray">
-									Title
-								</label>
-								<input
-									type="text"
-									id="title"
-									name="title"
-									value={queryParams.title}
-									onChange={handleQueryChange}
-									placeholder="Song title"
-									className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-spotify-green focus:border-spotify-green"
-								/>
-							</div>
-
-							<div className="space-y-2">
-								<label htmlFor="artist" className="block text-sm font-semibold text-spotify-gray">
-									Artist
-								</label>
-								<input
-									type="text"
-									id="artist"
-									name="artist"
-									value={queryParams.artist}
-									onChange={handleQueryChange}
-									placeholder="Artist name"
-									className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-								/>
-							</div>
-
-							<div className="space-y-2">
-								<label htmlFor="year" className="block text-sm font-semibold text-spotify-gray">
-									Year
-								</label>
-								<input
-									type="text"
-									id="year"
-									name="year"
-									value={queryParams.year}
-									onChange={handleQueryChange}
-									placeholder="Release year"
-									className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-								/>
-							</div>
-
-							<div className="space-y-2">
-								<label htmlFor="album" className="block text-sm font-semibold text-spotify-gray">
-									Album
-								</label>
-								<input
-									type="text"
-									id="album"
-									name="album"
-									value={queryParams.album}
-									onChange={handleQueryChange}
-									placeholder="Album name"
-									className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-								/>
-							</div>
+				{/* Right: User profile & logout */}
+				<div className="flex items-center space-x-4">
+					<div className="bg-[#282828] p-1 rounded-full">
+						<div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+							{user.user_name.charAt(0).toUpperCase()}
 						</div>
+					</div>
+					<span className="hidden sm:inline">{user.user_name}</span>
+					<button
+						onClick={handleLogout}
+						className="text-sm py-1 px-3 text-black bg-white rounded-full hover:scale-105 transition-transform"
+					>
+						Logout
+					</button>
+				</div>
+			</div>
 
-						<div>
-							<button
-								type="submit"
-								className={`px-4 py-2 rounded-md text-spotify-light-black font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
-                  ${queryLoading ? 'bg-green-700 cursor-not-allowed' : 'bg-spotify-green hover:bg-green-700'}`}
-								disabled={queryLoading}
-							>
-								{queryLoading ? 'Searching...' : 'Query'}
-							</button>
-						</div>
-					</form>
+			<div className="flex">
+				{/* Main Content */}
+				<div className="flex-1 p-6 bg-gradient-to-b from-[#121212] to-black px-20">
+					{/* Welcome section */}
+					<div className="mb-8">
+						<h1 className="text-2xl md:text-3xl font-bold mb-2">Good {getTimeOfDay()}, {user.user_name}</h1>
+						<p className="text-gray-400">Explore and discover new music</p>
+					</div>
 
-					<div className="mt-8">
-						{queryError && (
-							<div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-								{queryError}
-							</div>
-						)}
-
-						{queryResults.length > 0 && (
-							<div>
-								<h3 className="text-lg font-medium text-gray-800 mb-4">Search Results</h3>
-								<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-									{queryResults.map((music, index) => (
-										<MusicCard
-											key={`query-${index}`}
-											music={music}
-											actionType="subscribe"
-											onAction={() => handleSubscribe(music)}
-										/>
-									))}
+					{/* Search & Query Section */}
+					<div className="bg-[#181818] p-6 rounded-lg mb-8">
+						<h2 className="text-xl font-bold mb-4">Search Music</h2>
+						<form onSubmit={handleQuerySubmit} className="space-y-6">
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+								<div className="space-y-2">
+									<label htmlFor="title" className="block text-sm font-medium text-gray-300">
+										Title
+									</label>
+									<input
+										type="text"
+										id="title"
+										name="title"
+										value={queryParams.title}
+										onChange={handleQueryChange}
+										placeholder="Song title"
+										className="w-full px-3 py-2 bg-[#282828] border border-[#333] rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+									/>
 								</div>
+
+								<div className="space-y-2">
+									<label htmlFor="artist" className="block text-sm font-medium text-gray-300">
+										Artist
+									</label>
+									<input
+										type="text"
+										id="artist"
+										name="artist"
+										value={queryParams.artist}
+										onChange={handleQueryChange}
+										placeholder="Artist name"
+										className="w-full px-3 py-2 bg-[#282828] border border-[#333] rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label htmlFor="year" className="block text-sm font-medium text-gray-300">
+										Year
+									</label>
+									<input
+										type="text"
+										id="year"
+										name="year"
+										value={queryParams.year}
+										onChange={handleQueryChange}
+										placeholder="Release year"
+										className="w-full px-3 py-2 bg-[#282828] border border-[#333] rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label htmlFor="album" className="block text-sm font-medium text-gray-300">
+										Album
+									</label>
+									<input
+										type="text"
+										id="album"
+										name="album"
+										value={queryParams.album}
+										onChange={handleQueryChange}
+										placeholder="Album name"
+										className="w-full px-3 py-2 bg-[#282828] border border-[#333] rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+									/>
+								</div>
+							</div>
+
+							<div>
+								<button
+									type="submit"
+									className={`px-6 py-2 rounded-full text-black font-medium transition-colors focus:outline-none 
+                    ${queryLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-400 hover:scale-105'}`}
+									disabled={queryLoading}
+								>
+									{queryLoading ? 'Searching...' : 'Search'}
+								</button>
+							</div>
+						</form>
+
+						<div className="mt-8">
+							{queryError && (
+								<div className="bg-red-900 bg-opacity-30 text-red-400 p-4 rounded-md mb-6">
+									{queryError}
+								</div>
+							)}
+
+							{queryResults.length > 0 && (
+								<div>
+									<h3 className="text-lg font-bold text-white mb-4">Search Results</h3>
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+										{queryResults.map((music, index) => (
+											<MusicCard
+												key={`query-${index}`}
+												music={music}
+												actionType="subscribe"
+												onAction={() => handleSubscribe(music)}
+											/>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					</div>
+
+					{/* Your Subscriptions Section */}
+					<div>
+						<h2 className="text-xl font-bold mb-4">Your Subscriptions</h2>
+
+						{subscriptionLoading ? (
+							<div className="text-center py-8 text-gray-400">
+								Loading subscriptions...
+							</div>
+						) : subscriptions.length === 0 ? (
+							<div className="text-center py-12 bg-[#181818] rounded-lg text-gray-400">
+								<div className="mb-4 mx-auto w-16 h-16 rounded-full bg-[#282828] flex items-center justify-center">
+									<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+									</svg>
+								</div>
+								<p className="text-lg">You haven't subscribed to any music yet.</p>
+								<p className="text-sm mt-2">Search for songs and hit subscribe to add them here.</p>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+								{subscriptions.map((subscription, index) => (
+									<MusicCard
+										key={`sub-${index}`}
+										music={subscription}
+										actionType="remove"
+										onAction={() => handleRemoveSubscription(subscription.music_id)}
+									/>
+								))}
 							</div>
 						)}
 					</div>
-				</section>
-
-				<section className="bg-spotify-light-black rounded-lg shadow-md p-6">
-					<h2 className="text-xl font-bold text-white mb-6">Your Subscriptions</h2>
-
-					{subscriptionLoading ? (
-						<div className="text-center py-8 text-white">
-							Loading subscriptions...
-						</div>
-					) : subscriptions.length === 0 ? (
-						<div className="text-center py-8 bg-gray-50 rounded-md text-white">
-							You haven't subscribed to any music yet.
-						</div>
-					) : (
-						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-							{subscriptions.map((subscription, index) => (
-								<MusicCard
-									key={`sub-${index}`}
-									music={subscription}
-									actionType="remove"
-									onAction={() => handleRemoveSubscription(subscription.music_id)}
-								/>
-							))}
-						</div>
-					)}
-				</section>
-			</main>
+				</div>
+			</div>
 		</div>
 	);
-}
+};
+
+// Helper function to get time of day greeting
+const getTimeOfDay = () => {
+	const hour = new Date().getHours();
+	if (hour < 12) return 'morning';
+	if (hour < 18) return 'afternoon';
+	return 'evening';
+};
 
 export default Main
