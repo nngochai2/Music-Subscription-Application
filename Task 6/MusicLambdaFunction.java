@@ -1,26 +1,25 @@
 package lambda;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.*;
-import com.amazonaws.services.dynamodbv2.document.spec.DeleteItemSpec;
-import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
-import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
-import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
-import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
-import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
+import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -32,412 +31,470 @@ public class MusicLambdaFunction implements RequestHandler<APIGatewayProxyReques
      * - AWS Lambda Java Events documentation: <a href="https://docs.aws.amazon.com/lambda/latest/dg/java-handler.html">...</a>
      * - AWS API Gateway Lambda Proxy integration: <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-as-simple-proxy-for-lambda.html">...</a>
      * - AWS DynamoDB document API examples: <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/JavaDocumentAPIWorkingWithItems.html">...</a>
+     * - Lambda function code debug and refinement provided by Claude AI assistant, April 2025
      */
-    private final AmazonDynamoDB client;
-    private final DynamoDB dynamoDB;
-    private final Table musicTable;
-    private Table subscriptionsTable;
-    private final ObjectMapper objectMapper;
 
-    public MusicLambdaFunction() {
-        client = AmazonDynamoDBClientBuilder.standard()
-                .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
-                .build();
-        dynamoDB = new DynamoDB(client);
-        musicTable = dynamoDB.getTable("music");
-
-        // Check if the subscriptions table exist
-        try {
-            subscriptionsTable = dynamoDB.getTable("subscriptions");
-
-            // Check if the table exists by trying to describe it
-            subscriptionsTable.describe();
-        } catch (Exception e) {
-            // If table doesn't exist, create one
-            this.createSubscriptionsTable();
-        }
-
-        objectMapper = new ObjectMapper();
-    }
-
-    /**
-     * Helper function to create the "subscriptions" table if it has not been created
-     */
-    private void createSubscriptionsTable() {
-        try {
-            List<KeySchemaElement> keySchema = new ArrayList<>();
-            keySchema.add(new KeySchemaElement()
-                    .withAttributeName("email")
-                    .withKeyType(KeyType.HASH)); // Partition key
-            keySchema.add(new KeySchemaElement()
-                    .withAttributeName("music_id")
-                    .withKeyType(KeyType.RANGE)); // Sort key
-
-            List<AttributeDefinition> attributeDefinitions = new ArrayList<>();
-            attributeDefinitions.add(new AttributeDefinition()
-                    .withAttributeName("email")
-                    .withAttributeType(ScalarAttributeType.S));
-            attributeDefinitions.add(new AttributeDefinition()
-                    .withAttributeName("music_id")
-                    .withAttributeType(ScalarAttributeType.S));
-
-            CreateTableRequest request = new CreateTableRequest()
-                    .withTableName("subscriptions")
-                    .withKeySchema(keySchema)
-                    .withAttributeDefinitions(attributeDefinitions)
-                    .withProvisionedThroughput(
-                            new ProvisionedThroughput().withReadCapacityUnits(5L).withWriteCapacityUnits(5L)
-                    );
-
-            client.createTable(request);
-
-            // Wait for table to be created
-            Table newTable = dynamoDB.getTable("subscriptions");
-            newTable.waitForActive();
-        } catch (Exception e) {
-            System.err.println("Error creating subscriptions table: " + e.getMessage());
-        }
-    }
+    private final AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard().build();
+    private final DynamoDB dynamoDB = new DynamoDB(client);
+    private final String musicTableName = "music";
+    private final String subscriptionsTableName = "subscriptions";
+    private final String loginTableName = "login";
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
         context.getLogger().log("Received request: " + request);
 
-        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+        try {
+            // Determine HTTP method
+            String httpMethod = request.getHttpMethod();
+            String path = request.getPath();
+            context.getLogger().log("HTTP Method: " + httpMethod + ", Path: " + path);
+
+            if ("GET".equals(httpMethod)) {
+                // Handle GET requests (query parameters)
+                return handleGetRequest(request, context);
+            } else if ("POST".equals(httpMethod)) {
+                // Handle POST requests (request body)
+                return handlePostRequest(request, context);
+            } else if ("DELETE".equals(httpMethod)) {
+                // Handle DELETE requests (request body)
+                return handleDeleteRequest(request, context);
+            } else if ("OPTIONS".equals(httpMethod)) {
+                // Handle OPTIONS requests (for CORS preflight)
+                return createCorsResponse();
+            } else {
+                return createErrorResponse("Unsupported HTTP method: " + httpMethod);
+            }
+        } catch (Exception e) {
+            context.getLogger().log("Error: " + e.getMessage());
+            e.printStackTrace();
+            return createErrorResponse("Internal server error: " + e.getMessage());
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handleGetRequest(APIGatewayProxyRequestEvent request, Context context) {
+        // Get query parameters for GET requests
+        Map<String, String> queryParams = request.getQueryStringParameters();
+        context.getLogger().log("Query parameters: " + queryParams);
+
+        if (queryParams == null || queryParams.isEmpty()) {
+            return createErrorResponse("No query parameters provided");
+        }
+
+        String path = request.getPath();
+
+        if (path.contains("/music/query")) {
+            // Handle music query
+            return handleMusicQuery(queryParams, context);
+        } else if (path.contains("/subscriptions")) {
+            // Handle GET subscriptions
+            return handleGetSubscriptions(queryParams, context);
+        } else if (path.contains("/login")) {
+            // Handle login authentication
+            return handleLogin(queryParams, context);
+        } else {
+            return createErrorResponse("Unsupported path: " + path);
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handlePostRequest(APIGatewayProxyRequestEvent request, Context context) {
+        // Get request body for POST requests
+        String body = request.getBody();
+        context.getLogger().log("Request body: " + body);
+
+        if (body == null || body.isEmpty()) {
+            return createErrorResponse("No request body provided");
+        }
+
+        String path = request.getPath();
+
+        if (path.contains("/subscriptions")) {
+            // Handle POST subscriptions (add subscription)
+            return handleAddSubscription(body, context);
+        } else if (path.contains("/register")) {
+            // Handle user registration
+            return handleRegister(body, context);
+        } else {
+            return createErrorResponse("Unsupported path: " + path);
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handleDeleteRequest(APIGatewayProxyRequestEvent request, Context context) {
+        // Get request body for DELETE requests
+        String body = request.getBody();
+        context.getLogger().log("Request body: " + body);
+
+        if (body == null || body.isEmpty()) {
+            return createErrorResponse("No request body provided");
+        }
+
+        String path = request.getPath();
+
+        if (path.contains("/subscriptions")) {
+            // Handle DELETE subscriptions (remove subscription)
+            return handleRemoveSubscription(body, context);
+        } else {
+            return createErrorResponse("Unsupported path: " + path);
+        }
+    }
+
+    // MUSIC QUERY HANDLER
+    private APIGatewayProxyResponseEvent handleMusicQuery(Map<String, String> queryParams, Context context) {
+        try {
+            // Building filter expression
+            StringBuilder filterExpression = new StringBuilder();
+            ValueMap valueMap = new ValueMap();
+            Map<String, String> nameMap = new HashMap<>();
+
+            boolean firstCondition = true;
+
+            if (queryParams.containsKey("title")) {
+                filterExpression.append("contains(#title, :title)");
+                valueMap.put(":title", queryParams.get("title"));
+                nameMap.put("#title", "title");
+                firstCondition = false;
+            }
+
+            if (queryParams.containsKey("artist")) {
+                if (!firstCondition) {
+                    filterExpression.append(" AND ");
+                }
+                filterExpression.append("contains(#artist, :artist)");
+                valueMap.put(":artist", queryParams.get("artist"));
+                nameMap.put("#artist", "artist");
+                firstCondition = false;
+            }
+
+            if (queryParams.containsKey("year")) {
+                if (!firstCondition) {
+                    filterExpression.append(" AND ");
+                }
+                filterExpression.append("#yr = :year");
+                valueMap.put(":year", queryParams.get("year"));
+                nameMap.put("#yr", "year");
+                firstCondition = false;
+            }
+
+            if (queryParams.containsKey("album")) {
+                if (!firstCondition) {
+                    filterExpression.append(" AND ");
+                }
+                filterExpression.append("contains(#album, :album)");
+                valueMap.put(":album", queryParams.get("album"));
+                nameMap.put("#album", "album");
+            }
+
+            // Create scan spec
+            ScanSpec scanSpec = new ScanSpec();
+
+            if (filterExpression.length() > 0) {
+                scanSpec.withFilterExpression(filterExpression.toString())
+                        .withValueMap(valueMap)
+                        .withNameMap(nameMap);
+            }
+
+            context.getLogger().log("Scan spec: " + scanSpec);
+
+            Table table = dynamoDB.getTable(musicTableName);
+            context.getLogger().log("Table obtained: " + table.getTableName());
+
+            ItemCollection<ScanOutcome> items = table.scan(scanSpec);
+            Iterator<Item> iterator = items.iterator();
+
+            List<Map<String, Object>> musicList = new ArrayList<>();
+            while (iterator.hasNext()) {
+                Item item = iterator.next();
+                Map<String, Object> musicMap = new HashMap<>();
+                musicMap.put("title", item.getString("title"));
+                musicMap.put("artist", item.getString("artist"));
+                musicMap.put("year", item.getString("year"));
+                musicMap.put("album", item.getString("album"));
+                musicMap.put("image_url", item.getString("image_url"));
+                musicList.add(musicMap);
+            }
+
+            context.getLogger().log("Found " + musicList.size() + " items");
+
+            if (musicList.isEmpty()) {
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("success", false);
+                responseBody.put("message", "No result is retrieved. Please query again");
+
+                return createResponse(200, objectMapper.writeValueAsString(responseBody));
+            } else {
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("success", true);
+                responseBody.put("music", musicList);
+
+                return createResponse(200, objectMapper.writeValueAsString(responseBody));
+            }
+
+        } catch (Exception e) {
+            context.getLogger().log("Error querying music: " + e.getMessage());
+            return createErrorResponse("Error querying music: " + e.getMessage());
+        }
+    }
+
+    // SUBSCRIPTION HANDLERS
+    private APIGatewayProxyResponseEvent handleGetSubscriptions(Map<String, String> queryParams, Context context) {
+        try {
+            String email = queryParams.get("email");
+            if (email == null || email.isEmpty()) {
+                return createErrorResponse("Email parameter is required");
+            }
+
+            // Query DynamoDB for subscriptions
+            Table subscriptionsTable = dynamoDB.getTable(subscriptionsTableName);
+
+            // Build query to get subscriptions for this email
+            QuerySpec querySpec = new QuerySpec()
+                    .withKeyConditionExpression("email = :email")
+                    .withValueMap(new ValueMap()
+                            .withString(":email", email));
+
+            ItemCollection<QueryOutcome> items = subscriptionsTable.query(querySpec);
+            Iterator<Item> iterator = items.iterator();
+
+            List<Map<String, Object>> subscriptionsList = new ArrayList<>();
+            while (iterator.hasNext()) {
+                Item item = iterator.next();
+                Map<String, Object> subscription = new HashMap<>();
+                subscription.put("title", item.getString("title"));
+                subscription.put("artist", item.getString("artist"));
+                subscription.put("year", item.getString("year"));
+                subscription.put("album", item.getString("album"));
+                subscription.put("image_url", item.getString("image_url"));
+                subscription.put("music_id", item.getString("music_id"));
+                subscription.put("s3_image_url", item.getString("s3_image_url"));
+                subscriptionsList.add(subscription);
+            }
+
+            // Create response
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("success", true);
+            responseBody.put("subscriptions", subscriptionsList);
+
+            return createResponse(200, objectMapper.writeValueAsString(responseBody));
+        } catch (Exception e) {
+            context.getLogger().log("Error getting subscriptions: " + e.getMessage());
+            return createErrorResponse("Error getting subscriptions: " + e.getMessage());
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handleAddSubscription(String requestBody, Context context) {
+        try {
+            // Parse request body
+            Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+            String email = (String) requestMap.get("email");
+            String title = (String) requestMap.get("title");
+            String artist = (String) requestMap.get("artist");
+            String year = String.valueOf(requestMap.get("year")); // Convert to string in case it's a number
+            String album = (String) requestMap.get("album");
+            String imageUrl = (String) requestMap.get("image_url");
+
+            if (email == null || title == null || artist == null || album == null) {
+                return createErrorResponse("Required fields missing");
+            }
+
+            // Create a unique music_id (title#album is common)
+            String musicId = title + "#" + album;
+
+            // Create a new subscription item
+            Table subscriptionsTable = dynamoDB.getTable(subscriptionsTableName);
+
+            // Check if already subscribed
+            QuerySpec querySpec = new QuerySpec()
+                    .withKeyConditionExpression("email = :email AND music_id = :music_id")
+                    .withValueMap(new ValueMap()
+                            .withString(":email", email)
+                            .withString(":music_id", musicId));
+
+            ItemCollection<QueryOutcome> existing = subscriptionsTable.query(querySpec);
+            if (existing.iterator().hasNext()) {
+                return createSuccessResponse("Already subscribed to this music");
+            }
+
+            // Add new subscription
+            Item item = new Item()
+                    .withPrimaryKey("email", email, "music_id", musicId)
+                    .withString("title", title)
+                    .withString("artist", artist)
+                    .withString("year", year != null ? year : "")
+                    .withString("album", album)
+                    .withString("image_url", imageUrl != null ? imageUrl : "")
+                    .withString("s3_image_url", imageUrl != null ? imageUrl : ""); // In a real app, this would be an S3 URL
+
+            subscriptionsTable.putItem(item);
+
+            // Create success response
+            return createSuccessResponse("Music subscription successful");
+        } catch (Exception e) {
+            context.getLogger().log("Error adding subscription: " + e.getMessage());
+            return createErrorResponse("Error adding subscription: " + e.getMessage());
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handleRemoveSubscription(String requestBody, Context context) {
+        try {
+            // Parse request body
+            Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+            String email = (String) requestMap.get("email");
+            String musicId = (String) requestMap.get("music_id");
+
+            if (email == null || musicId == null) {
+                return createErrorResponse("Email and music_id are required");
+            }
+
+            // Remove the subscription
+            Table subscriptionsTable = dynamoDB.getTable(subscriptionsTableName);
+            subscriptionsTable.deleteItem("email", email, "music_id", musicId);
+
+            // Create success response
+            return createSuccessResponse("Subscription removed successfully");
+        } catch (Exception e) {
+            context.getLogger().log("Error removing subscription: " + e.getMessage());
+            return createErrorResponse("Error removing subscription: " + e.getMessage());
+        }
+    }
+
+    // AUTHENTICATION HANDLERS
+    private APIGatewayProxyResponseEvent handleLogin(Map<String, String> queryParams, Context context) {
+        try {
+            String email = queryParams.get("email");
+            String password = queryParams.get("password");
+
+            if (email == null || password == null) {
+                return createErrorResponse("Email and password are required");
+            }
+
+            // Query the login table
+            Table loginTable = dynamoDB.getTable(loginTableName);
+            Item item = loginTable.getItem("email", email);
+
+            if (item == null) {
+                return createErrorResponse("Email or password is invalid");
+            }
+
+            String storedPassword = item.getString("password");
+
+            if (password.equals(storedPassword)) {
+                // Login successful
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("success", true);
+                responseBody.put("user", new HashMap<String, String>() {{
+                    put("email", email);
+                    put("user_name", item.getString("user_name"));
+                }});
+
+                return createResponse(200, objectMapper.writeValueAsString(responseBody));
+            } else {
+                return createErrorResponse("Email or password is invalid");
+            }
+        } catch (Exception e) {
+            context.getLogger().log("Error during login: " + e.getMessage());
+            return createErrorResponse("Error during login: " + e.getMessage());
+        }
+    }
+
+    private APIGatewayProxyResponseEvent handleRegister(String requestBody, Context context) {
+        try {
+            // Parse request body
+            Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+            String email = (String) requestMap.get("email");
+            String userName = (String) requestMap.get("user_name");
+            String password = (String) requestMap.get("password");
+
+            if (email == null || userName == null || password == null) {
+                return createErrorResponse("Email, username, and password are required");
+            }
+
+            // Check if email already exists
+            Table loginTable = dynamoDB.getTable(loginTableName);
+            Item existingUser = loginTable.getItem("email", email);
+
+            if (existingUser != null) {
+                return createErrorResponse("The email already exists");
+            }
+
+            // Create new user
+            Item newUser = new Item()
+                    .withPrimaryKey("email", email)
+                    .withString("user_name", userName)
+                    .withString("password", password);
+
+            loginTable.putItem(newUser);
+
+            // Create success response
+            return createSuccessResponse("Registration successful");
+        } catch (Exception e) {
+            context.getLogger().log("Error during registration: " + e.getMessage());
+            return createErrorResponse("Error during registration: " + e.getMessage());
+        }
+    }
+
+    // HELPER METHODS
+    private APIGatewayProxyResponseEvent createResponse(int statusCode, String body) {
         Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application.json");
         headers.put("Access-Control-Allow-Origin", "*");
         headers.put("Access-Control-Allow-Methods", "OPTIONS,GET,POST,DELETE");
         headers.put("Access-Control-Allow-Headers", "Content-Type");
+        headers.put("Content-Type", "application/json");
+
+        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+        response.setStatusCode(statusCode);
         response.setHeaders(headers);
+        response.setBody(body);
 
-        // Handle preflight options request
-        if ("OPTIONS".equals(request.getHttpMethod())) {
-            response.setStatusCode(200);
-            return response;
-        }
-
-        try {
-            // Get the path and HTTP method
-            String path = request.getPath();
-            String httpMethod = request.getHttpMethod();
-
-            // Handle music query requests
-            if (path.endsWith("/music/query") && "GET".equals(httpMethod)) {
-                return this.handleMusicQuery(request, response, context);
-            } else if (path.endsWith("/subscriptions")) {
-                // Handle subscription requests
-                if ("GET".equals(httpMethod)) {
-                    return this.handleGetSubscriptions(request, response, context);
-                } else if ("POST".equals(httpMethod)) {
-                    return this.handleAddSubscription(request, response, context);
-                } else if ("DELETE".equals(httpMethod)) {
-                    return this.handleRemoveSubscription(request, response, context);
-                }
-            }
-
-            // If path is not recognized
-            response.setStatusCode(404);
-            response.setBody("{\"success\":false,\"message\":\"Route not found\"}");
-            return response;
-        } catch (Exception e) {
-            context.getLogger().log("Error: " + e.getMessage());
-            response.setStatusCode(500);
-            response.setBody("{\"success\":false,\"message\":\"Internal server error: " + e.getMessage() + "\"}");
-            return response;
-        }
+        return response;
     }
 
-    /**
-     * Handle music query request
-     */
-    private APIGatewayProxyResponseEvent handleMusicQuery(APIGatewayProxyRequestEvent request,
-                                                          APIGatewayProxyResponseEvent response,
-                                                          Context context) {
+    private APIGatewayProxyResponseEvent createSuccessResponse(String message) {
         try {
-            // Get query params
-            Map<String, String> queryParams = request.getQueryStringParameters();
-            if (queryParams == null) {
-                queryParams = new HashMap<>();
-            }
-
-            String title = queryParams.getOrDefault("title", "");
-            String artist = queryParams.getOrDefault("artist", "");
-            String year = queryParams.getOrDefault("year", "");
-            String album = queryParams.getOrDefault("album", "");
-
-            // Check if at least one query parameter is provided
-            if (title.isEmpty() && artist.isEmpty() && year.isEmpty() && album.isEmpty()) {
-                response.setStatusCode(400);
-                response.setBody("{\"success\":false,\"message\":\"At least one search criteria is required\"}");
-                return response;
-            }
-
-            List<Item> results = new ArrayList<>();
-
-            // Execute the query approach based on provided params
-            if (!artist.isEmpty() && title.isEmpty() && album.isEmpty() && year.isEmpty()) {
-                // Query by artist using scan
-                ScanSpec scanSpec = new ScanSpec()
-                        .withFilterExpression("contains(artist, :artist)")
-                        .withValueMap(new ValueMap().withString(":artist", artist));
-
-                ItemCollection<ScanOutcome> items = musicTable.scan(scanSpec);
-                items.forEach(results::add);
-            } else if (!title.isEmpty() && artist.isEmpty() && year.isEmpty()) {
-                // Query by primary key
-                if (!album.isEmpty()) {
-                    // Query by specific title and album
-                    GetItemSpec getItemSpec = new GetItemSpec()
-                            .withPrimaryKey("title", title, "album", album);
-
-                    Item item = musicTable.getItem(getItemSpec);
-                    if (item != null) {
-                        results.add(item);
-                    }
-                } else {
-                    // Query for all items with the title
-                    QuerySpec querySpec = new QuerySpec()
-                            .withKeyConditionExpression("title = :title")
-                            .withValueMap(new ValueMap().withString(":title", title));
-
-                    ItemCollection<QueryOutcome> items = musicTable.query(querySpec);
-                    items.forEach(results::add);
-                }
-            } else {
-                // For other combinations, use scan with filter
-                StringBuilder filterExpression = new StringBuilder();
-                ValueMap valueMap = new ValueMap();
-
-                if (!title.isEmpty()) {
-                    filterExpression.append("contains(title, :title)");
-                    valueMap.withString(":title", title);
-                }
-
-                if (!artist.isEmpty()) {
-                    if (filterExpression.length() == 0) {
-                        filterExpression.append(" AND ");
-                    }
-                    filterExpression.append("contains(artist, :artist)");
-                    valueMap.withString(":artist", artist);
-                }
-
-                if (!album.isEmpty()) {
-                    if (filterExpression.length() == 0) {
-                        filterExpression.append(" AND ");
-                    }
-                    filterExpression.append("contains(album, :album)");
-                    valueMap.withString(":album", album);
-                }
-
-                ScanSpec scanSpec = new ScanSpec()
-                        .withFilterExpression(filterExpression.toString())
-                        .withValueMap(valueMap);
-
-                ItemCollection<ScanOutcome> items = musicTable.scan(scanSpec);
-                items.forEach(results::add);
-            }
-
-            // If no result found
-            if (results.isEmpty()) {
-                response.setStatusCode(404);
-                response.setBody("{\"success\":false,\"message\":\"No result is retrieved. Please query again\"}");
-                return response;
-            }
-
-            // Build response with results
-            ObjectNode responseBody = objectMapper.createObjectNode();
+            Map<String, Object> responseBody = new HashMap<>();
             responseBody.put("success", true);
+            responseBody.put("message", message);
 
-            ArrayNode musicArray = responseBody.putArray("music");
-            for (Item item : results) {
-                ObjectNode musicNode = objectMapper.createObjectNode();
-                Map<String, Object> itemMap = item.asMap();
-
-                for (Map.Entry<String, Object> entry : itemMap.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-
-                    if (value instanceof String) {
-                        musicNode.put(key, (String) value);
-                    } else if (value instanceof Number) {
-                        musicNode.put(key, ((Number) value).intValue());
-                    }
-                }
-
-                // Generate music_id if it doesn't exist
-                if (!itemMap.containsKey("music_id")) {
-                    String musicId = item.getString("title") + "-" + item.getString("album");
-                    musicNode.put("music_id", musicId);
-                }
-
-                musicArray.add(musicNode);
-            }
-
-            response.setStatusCode(200);
-            response.setBody(objectMapper.writeValueAsString(responseBody));
-
-            return response;
-
+            return createResponse(200, objectMapper.writeValueAsString(responseBody));
         } catch (Exception e) {
-            context.getLogger().log("Query error: " + e.getMessage());
-            response.setStatusCode(500);
-            response.setBody("{\"success\":false,\"message\":\"Query failed: " + e.getMessage() + "\"}");
+            // Fallback if JSON serialization fails
+            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+            response.setStatusCode(200);
+            response.setBody("{\"success\":true,\"message\":\"" + message.replace("\"", "\\\"") + "\"}");
             return response;
         }
     }
 
-    private APIGatewayProxyResponseEvent handleGetSubscriptions(APIGatewayProxyRequestEvent request,
-                                                                APIGatewayProxyResponseEvent response,
-                                                                Context context) {
+    private APIGatewayProxyResponseEvent createErrorResponse(String message) {
         try {
-            // Get email from query parameter
-            Map<String, String> queryParams = request.getQueryStringParameters();
-            if (queryParams == null || !queryParams.containsKey("email")) {
-                response.setStatusCode(400);
-                response.setBody("{\"success\":false,\"message\":\"Email is required\"}");
-                return response;
-            }
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", message);
 
-            String email = queryParams.get("email");
-
-            // Query subscriptions table
-            QuerySpec querySpec = new QuerySpec()
-                    .withKeyConditionExpression("email = :email")
-                    .withValueMap(new ValueMap().withString(":email", email));
-
-            ItemCollection<QueryOutcome> items = subscriptionsTable.query(querySpec);
-
-            // Build response with subscriptions
-            ObjectNode responseBody = objectMapper.createObjectNode();
-            responseBody.put("success", true);
-
-            ArrayNode subscriptionsArray = responseBody.putArray("subscriptions");
-            for (Item item : items) {
-                ObjectNode subscriptionNode = objectMapper.createObjectNode();
-                Map<String, Object> itemMap = item.asMap();
-
-                for (Map.Entry<String, Object> entry : itemMap.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-
-                    if (value instanceof String) {
-                        subscriptionNode.put(key, (String) value);
-                    } else if (value instanceof Number) {
-                        subscriptionNode.put(key, ((Number) value).intValue());
-                    }
-                }
-
-                subscriptionsArray.add(subscriptionNode);
-            }
-
-            response.setStatusCode(200);
-            response.setBody(objectMapper.writeValueAsString(responseBody));
-            return response;
-
+            return createResponse(500, objectMapper.writeValueAsString(errorResponse));
         } catch (Exception e) {
-            context.getLogger().log("Get subscriptions error: " + e.getMessage());
+            // Fallback if JSON serialization fails
+            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
             response.setStatusCode(500);
-            response.setBody("{\"success\":false,\"message\":\"Failed to get subscriptions: " + e.getMessage() + "\"}");
+            response.setBody("{\"success\":false,\"message\":\"" + message.replace("\"", "\\\"") + "\"}");
             return response;
         }
     }
 
-    private APIGatewayProxyResponseEvent handleAddSubscription(APIGatewayProxyRequestEvent request,
-                                                               APIGatewayProxyResponseEvent response,
-                                                               Context context) {
-        try {
-            // Parse request body
-            String requestBody = request.getBody();
-            JsonNode rootNode = objectMapper.readTree(requestBody);
+    private APIGatewayProxyResponseEvent createCorsResponse() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Access-Control-Allow-Origin", "*");
+        headers.put("Access-Control-Allow-Methods", "OPTIONS,GET,POST,DELETE");
+        headers.put("Access-Control-Allow-Headers", "Content-Type");
 
-            // Extract subscription details
-            String email = rootNode.path("email").asText();
-            String title = rootNode.path("title").asText();
-            String artist = rootNode.path("artist").asText();
-            String year = rootNode.path("year").asText();
-            String album = rootNode.path("album").asText();
-            String imageUrl = rootNode.path("image_url").asText();
+        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+        response.setStatusCode(200);
+        response.setHeaders(headers);
+        response.setBody("");
 
-            // Validate user input
-            if (email.isEmpty() || title.isEmpty() || artist.isEmpty() ||
-                    year.isEmpty() || album.isEmpty()) {
-                response.setStatusCode(400);
-                response.setBody("{\"success\":false,\"message\":\"All fields are required\"}");
-                return response;
-            }
-
-            // Create music_id from title and album
-            String musicId = title + "-" + album;
-
-            // Check if the music has already been subscribed
-            GetItemSpec getItemSpec = new GetItemSpec()
-                    .withPrimaryKey("email", email, "music_id", musicId);
-
-            Item existingItem = subscriptionsTable.getItem(getItemSpec);
-
-            if (existingItem == null) {
-                // Create new subscription
-                Item newSubscription = new Item()
-                        .withPrimaryKey("email", email, "music_id", musicId)
-                        .withString("title", title)
-                        .withString("artist", artist)
-                        .withInt("year", Integer.parseInt(year))
-                        .withString("album", album)
-                        .withString("image_url", imageUrl);
-
-                // Add s3_image_url if available in the request
-                if (rootNode.has("s3_image_url")) {
-                    newSubscription.withString("s3_image_url", rootNode.path("s3_image_url").asText());
-                }
-
-                subscriptionsTable.putItem(newSubscription);
-            }
-
-            response.setStatusCode(200);
-            response.setBody("{\"success\":true,\"message\":\"Music subscription successful\"}");
-            return response;
-        } catch (Exception e) {
-            context.getLogger().log("Subscribe music error: " + e.getMessage());
-            response.setStatusCode(500);
-            response.setBody("{\"success\":false,\"message\":\"Subscribe failed: " + e.getMessage() + "\"}");
-            return response;
-        }
-    }
-
-    private APIGatewayProxyResponseEvent handleRemoveSubscription(APIGatewayProxyRequestEvent request,
-                                                               APIGatewayProxyResponseEvent response,
-                                                               Context context) {
-        try {
-            // Parse request body
-            String requestBody = request.getBody();
-            JsonNode rootNode = objectMapper.readTree(requestBody);
-
-            // Extract details
-            String email = rootNode.path("email").asText();
-            String musicId = rootNode.path("music_id").asText();
-
-            // Validate input
-            if (email.isEmpty() || musicId.isEmpty()) {
-                response.setStatusCode(400);
-                response.setBody("{\"success\":false,\"message\":\"Email and music_id are required\"}");
-                return response;
-            }
-
-            // Delete the subscription
-            DeleteItemSpec deleteItemSpec = new DeleteItemSpec()
-                    .withPrimaryKey("email", email, "music_id", musicId);
-
-            subscriptionsTable.deleteItem(deleteItemSpec);
-
-            response.setStatusCode(200);
-            response.setBody("{\"success\":true,\"message\":\"Subscription removed successfully\"}");
-            return response;
-        } catch (Exception e) {
-            context.getLogger().log("Remove subscription error: " + e.getMessage());
-            response.setStatusCode(500);
-            response.setBody("{\"success\":false,\"message\":\"Failed to remove subscription: " + e.getMessage() + "\"}");
-            return response;
-        }
+        return response;
     }
 }
