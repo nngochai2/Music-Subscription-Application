@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { musicService } from '../services/apiServices';
 import MusicCard from '../components/MusicCard';
+import { useNotification } from '../contexts/NotificationContext';
 
 const Main = () => {
 	// User state
@@ -23,6 +24,8 @@ const Main = () => {
 	const [queryLoading, setQueryLoading] = useState(false);
 
 	const navigate = useNavigate();
+
+	const { showNotification } = useNotification();
 
 	// Check if a use is logged in
 	useEffect(() => {
@@ -109,13 +112,20 @@ const Main = () => {
 			const response = await musicService.subscribeMusic(user.email, music);
 
 			if (response.success) {
+				// Show success notification
+				showNotification('You have subscribed successfully!', 'success');
+
 				// Reload subscriptions to show the newly added one
 				await loadSubscriptions();
 			} else {
 				console.error('Subscription failed: ', response.message);
+
+				// Show error notification
+				showNotification('Subscription failed. Please try again.', 'error');
 			}
 		} catch (error) {
 			console.error('Error during subscription:', error);
+			showNotification('An error occurred. Please try again.', 'error');
 		}
 	}
 
@@ -127,13 +137,20 @@ const Main = () => {
 			const response = await musicService.removeSubscription(user.email, music_id);
 
 			if (response.success) {
+				// Show success notification
+				showNotification('Subscription removed successfully!', 'success');
+
 				// Update local state to show the removal
 				setSubscriptions(subscriptions.filter(sub => sub.music_id !== music_id));
 			} else {
 				console.error('Remove subscription failed: ', response.message);
+
+				// Show error notification
+				showNotification('Failed to remove subscription. Please try again.', 'error');
 			}
 		} catch (error) {
 			console.error('Error removing subscription: ', error);
+			showNotification('An error occurred. Please try again.', 'error');
 		}
 	}
 

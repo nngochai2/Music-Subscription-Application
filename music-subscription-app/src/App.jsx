@@ -3,6 +3,7 @@ import { Navigate, Route, Router, Routes } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Main from './pages/Main';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // Auth guard component to protected routes
 const ProtectedRoute = ({ children }) => {
@@ -18,26 +19,28 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
 	return (
-		<main className='font-sans antialiased text-gray-900 min-h-screen'>
-			<Routes>
-				{/* Public routes */}
-				<Route path='/login' element={<Login />} />
-				<Route path='/register' element={<Register />} />
+		<NotificationProvider>
+			<main className='font-sans antialiased text-gray-900 min-h-screen'>
+				<Routes>
+					{/* Public routes */}
+					<Route path='/login' element={<Login />} />
+					<Route path='/register' element={<Register />} />
 
-				{/* Protected routes */}
-				<Route 
-					path='/main'
-					element={
-						<ProtectedRoute>
-							<Main />
-						</ProtectedRoute>
-					}
-				/>
+					{/* Protected routes */}
+					<Route
+						path='/main'
+						element={
+							<ProtectedRoute>
+								<Main />
+							</ProtectedRoute>
+						}
+					/>
 
-				{/* Redirect to login for any other route */}
-				<Route path='*' element={<Navigate to='/login' replace />} />
-			</Routes>
-		</main>
+					{/* Redirect to login for any other route */}
+					<Route path='*' element={<Navigate to='/login' replace />} />
+				</Routes>
+			</main>
+		</NotificationProvider>
 	)
 }
 
