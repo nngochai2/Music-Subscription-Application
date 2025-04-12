@@ -170,9 +170,11 @@ public class MusicLambdaFunction implements RequestHandler<APIGatewayProxyReques
                 if (!firstCondition) {
                     filterExpression.append(" AND ");
                 }
-                filterExpression.append("#yr = :year");
-                valueMap.put(":year", queryParams.get("year"));
-                nameMap.put("#yr", "year");
+                // Use equality instead of contains for numbers
+                filterExpression.append("#year = :year");
+                // Convert string parameter to number for comparison
+                valueMap.put(":year", Integer.parseInt(queryParams.get("year")));
+                nameMap.put("#year", "year");
                 firstCondition = false;
             }
 
@@ -468,17 +470,26 @@ public class MusicLambdaFunction implements RequestHandler<APIGatewayProxyReques
         }
     }
 
+    // Update the fallback in createErrorResponse to include CORS headers
     private APIGatewayProxyResponseEvent createErrorResponse(String message) {
         try {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
             errorResponse.put("message", message);
 
-            return createResponse(500, objectMapper.writeValueAsString(errorResponse));
+            return createResponse(200, objectMapper.writeValueAsString(errorResponse));
         } catch (Exception e) {
-            // Fallback if JSON serialization fails
+            // Add CORS headers in fallback
             APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-            response.setStatusCode(500);
+            response.setStatusCode(200);
+
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Access-Control-Allow-Methods", "OPTIONS,GET,POST,DELETE");
+            headers.put("Access-Control-Allow-Headers", "Content-Type");
+            headers.put("Content-Type", "application/json");
+            response.setHeaders(headers);
+
             response.setBody("{\"success\":false,\"message\":\"" + message.replace("\"", "\\\"") + "\"}");
             return response;
         }
