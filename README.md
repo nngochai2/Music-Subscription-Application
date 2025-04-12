@@ -292,5 +292,5 @@ Mock credentials:
 
 ## Contributors
 
-- [Your Name](https://github.com/yourusername)
-- [Teammate Name](https://github.com/teammatename)
+- [Nguyen Ngoc Hai](https://github.com/nngochai2)
+- [Teammate Name](https://github.com/lintyy)
