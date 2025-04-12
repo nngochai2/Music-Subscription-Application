@@ -1,10 +1,9 @@
-// src/services/apiService.js
-// Base URL for API Gateway from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Base URLs for API Gateway from environment variables
+const MUSIC_API_URL = import.meta.env.VITE_MUSIC_API_URL;
+const USER_API_URL = import.meta.env.VITE_USER_API_URL;
 
-// Flag to determine if we should use mock data
-// Set this to false when your AWS services are ready
-const USE_MOCK_DATA = !API_BASE_URL;
+// Flag to determine if using mock data
+const USE_MOCK_DATA = !MUSIC_API_URL || !USER_API_URL;
 
 // Placeholder accounts for testing
 const PLACEHOLDER_ACCOUNTS = [
@@ -170,8 +169,8 @@ const mockMusicService = {
 		// Simulate API latency
 		await new Promise(resolve => setTimeout(resolve, 600));
 		
-		// In a real app, we'd filter subscriptions by user email
-		// For this mock, we'll just return the sample subscriptions
+		// In a real app, should filter subscriptions by user email
+		// For this mock, just return the sample subscriptions
 		return {
 			success: true,
 			subscriptions: MOCK_SUBSCRIPTIONS
@@ -231,7 +230,7 @@ const awsAuthService = {
 	// Login a user
 	login: async (email, password) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/login`, {
+			const response = await fetch(`${USER_API_URL}/login`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -249,7 +248,7 @@ const awsAuthService = {
 	// Register a new user
 	register: async (email, user_name, password) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/register`, {
+			const response = await fetch(`${USER_API_URL}/register`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -275,7 +274,7 @@ const awsMusicService = {
 			.map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
 			.join('&');
 			
-			const response = await fetch(`${API_BASE_URL}/music/query?${queryString}`, {
+			const response = await fetch(`${MUSIC_API_URL}/music/query?${queryString}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -292,7 +291,7 @@ const awsMusicService = {
 	// Get all subscriptions for a user
 	getSubscriptions: async (email) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/subscriptions?email=${encodeURIComponent(email)}`, {
+			const response = await fetch(`${MUSIC_API_URL}/subscriptions?email=${encodeURIComponent(email)}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -309,7 +308,7 @@ const awsMusicService = {
 	// Subscribe to a music track
 	subscribeMusic: async (email, musicData) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/subscriptions`, {
+			const response = await fetch(`${MUSIC_API_URL}/subscriptions`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -334,7 +333,7 @@ const awsMusicService = {
 	// Remove a music subscription
 	removeSubscription: async (email, music_id) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/subscriptions`, {
+			const response = await fetch(`${MUSIC_API_URL}/subscriptions`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
