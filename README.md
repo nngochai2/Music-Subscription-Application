@@ -293,4 +293,4 @@ Mock credentials:
 ## Contributors
 
 - [Nguyen Ngoc Hai](https://github.com/nngochai2)
-- [Teammate Name](https://github.com/lintyy)
+- [Tiffany Lin](https://github.com/lintyy)
