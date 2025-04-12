@@ -288,9 +288,9 @@ const USE_MOCK_DATA = true;
 
 Mock credentials:
 - Email: `test@example.com`
-- Password: `password123`
+- Password: `password`
 
 ## Contributors
 
-- [Your Name](https://github.com/yourusername)
-- [Teammate Name](https://github.com/teammatename)
+- [Nguyen Ngoc Hai](https://github.com/nngochai2)
+- [Tiffany Lin](https://github.com/lintyy)
