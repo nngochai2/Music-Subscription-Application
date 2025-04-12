@@ -288,7 +288,7 @@ const USE_MOCK_DATA = true;
 
 Mock credentials:
 - Email: `test@example.com`
-- Password: `password123`
+- Password: `password`
 
 ## Contributors
 
